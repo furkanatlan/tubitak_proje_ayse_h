@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Tekstil KDS (docker)",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "tekstil_kds",
+      "Username": "kds",
+      "SSLMode": "prefer"
+    }
+  }
+}

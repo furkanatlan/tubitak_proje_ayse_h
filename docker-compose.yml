@@ -1,0 +1,116 @@
+# Tekstil Atıkları Akıllı Karar Destek Sistemi - Geliştirme ortamı
+#
+#   docker compose up -d                 -> db + backend + frontend + pgadmin
+#   docker compose --profile osrm up -d  -> + yerel OSRM rota sunucusu
+#   (OSRM verisini ilk kez hazırlamak için: docker compose --profile osrm-setup run --rm osrm-hazirla)
+#
+# Host portları .env dosyasından değiştirilebilir (bkz. .env.example).
+
+name: tekstil-kds
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: tekstil_kds
+      POSTGRES_USER: kds
+      POSTGRES_PASSWORD: kds_sifre
+      TZ: Europe/Istanbul
+    ports:
+      - "${DB_PORT:-15432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kds -d tekstil_kds"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    # Geliştirme modu: kaynak kod klasörü bağlanır, Maven içeride çalışır.
+    # Kod değişince: docker compose restart backend
+    image: maven:3.9-eclipse-temurin-21
+    working_dir: /app
+    command: mvn -q -Dmaven.test.skip=true spring-boot:run
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/tekstil_kds
+      DB_USER: kds
+      DB_PASSWORD: kds_sifre
+      OSRM_URL: ${OSRM_URL:-http://osrm:5000}
+      TZ: Europe/Istanbul
+    ports:
+      - "${BACKEND_PORT:-18080}:8080"
+    volumes:
+      - ./backend:/app
+      - maven_repo:/root/.m2
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    environment:
+      BACKEND_URL: http://backend:8080
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-15173}:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-15050}:80"
+    volumes:
+      - ./infra/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      - db
+
+  # ---- OSRM (opsiyonel, ~8 GB RAM ister) ----
+  osrm-indir:
+    profiles: ["osrm-setup"]
+    image: curlimages/curl:8.10.1
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - '[ -f /data/harita.osm.pbf ] && echo "PBF zaten var." || curl -fL --retry 3 -o /data/harita.osm.pbf "$$OSM_PBF_URL"'
+    environment:
+      OSM_PBF_URL: ${OSM_PBF_URL:-https://download.geofabrik.de/europe/turkey-latest.osm.pbf}
+    volumes:
+      - osrm_data:/data
+
+  osrm-hazirla:
+    profiles: ["osrm-setup"]
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    entrypoint: ["/bin/sh", "/scripts/osrm-hazirla.sh"]
+    volumes:
+      - ./infra/osrm:/scripts:ro
+      - osrm_data:/data
+    depends_on:
+      osrm-indir:
+        condition: service_completed_successfully
+
+  osrm:
+    profiles: ["osrm"]
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    command: osrm-routed --algorithm mld --max-table-size 1000 /data/harita.osrm
+    ports:
+      - "${OSRM_PORT:-15000}:5000"
+    volumes:
+      - osrm_data:/data
+
+volumes:
+  db_data:
+  maven_repo:
+  frontend_node_modules:
+  osrm_data:

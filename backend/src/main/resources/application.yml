@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: tekstil-kds
+  datasource:
+    # Docker içinde compose bu değerleri verir; IDE'den çalıştırırken varsayılanlar kullanılır.
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/tekstil_kds}
+    username: ${DB_USER:kds}
+    password: ${DB_PASSWORD:kds_sifre}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # Şema sadece Flyway migration'ları ile değişir!
+    properties:
+      hibernate.jdbc.time_zone: Europe/Istanbul
+  flyway:
+    locations: classpath:db/migration
+
+kds:
+  osrm:
+    url: ${OSRM_URL:http://localhost:15000}
+    timeout-ms: 3000
+  hesap:
+    # OSRM ulaşılamazsa kuş uçuşu mesafe bu katsayı ile çarpılarak yol mesafesi tahmin edilir.
+    yol-katsayisi: 1.3
+    # Kamyon taşıma maliyeti (TL / ton-km) ve emisyon faktörü (kg CO2e / ton-km) - literatürden güncellenecek.
+    tasima-maliyeti-tl-ton-km: 4.5
+    tasima-emisyon-kg-ton-km: 0.105
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
