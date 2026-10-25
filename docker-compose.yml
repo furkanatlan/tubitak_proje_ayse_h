@@ -2,6 +2,7 @@
 #
 #   docker compose up -d                 -> db + backend + frontend + pgadmin
 #   docker compose --profile osrm up -d  -> + yerel OSRM rota sunucusu
+#   (veya .env içine COMPOSE_PROFILES=osrm yazın, düz "up -d" OSRM'yi de başlatır)
 #   (OSRM verisini ilk kez hazırlamak için: docker compose --profile osrm-setup run --rm osrm-hazirla)
 #
 # Host portları .env dosyasından değiştirilebilir (bkz. .env.example).

@@ -61,11 +61,16 @@ OSRM, iki firma arasındaki **gerçek karayolu** mesafesini ve süresini hesapla
 docker compose --profile osrm-setup run --rm osrm-hazirla
 ```
 
-Hazırlık bittikten sonra sistemi OSRM ile birlikte başlatın:
+Hazırlık bittikten sonra `.env.example` dosyasını `.env` adıyla kopyalayın ve `COMPOSE_PROFILES=osrm` satırının başındaki `#` işaretini silin.
+Bundan sonra her `docker compose up -d` komutu OSRM'yi de başlatır:
 
 ```bash
-docker compose --profile osrm up -d
+docker compose up -d
 ```
+
+Kontrol için tarayıcıda http://localhost:15000/route/v1/driving/29.08,40.268;29.36,38.648?overview=false adresini açın,
+`"code":"Ok"` görmelisiniz. Uygulamadaki öneri kartlarında mesafenin yanında **(OSRM)** yazar.
+Adım adım anlatım için: [GOREV_DAGILIMI.md, Adım 0.6](GOREV_DAGILIMI.md#06-gerçek-yol-haritası-osrm-kurulumu).
 
 ### OSRM olmadan çalışmak
 
@@ -81,7 +86,7 @@ OSRM_URL=https://router.project-osrm.org
 ## 5. Günlük kullanım
 
 ```bash
-docker compose up -d                 # sistemi başlat (OSRM için: docker compose --profile osrm up -d)
+docker compose up -d                 # sistemi başlat (.env'de COMPOSE_PROFILES=osrm varsa OSRM de başlar)
 docker compose ps                    # neler çalışıyor?
 docker compose logs -f backend       # backend loglarını izle
 docker compose stop                  # durdur (veriler korunur)

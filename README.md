@@ -15,7 +15,11 @@ cd tubitak_proje_ayse_h
 docker compose up -d
 ```
 
-Sonra tarayıcıda **http://localhost:15173** adresini açın. Ayrıntılar için: **[docs/KURULUM.md](docs/KURULUM.md)**
+Sonra tarayıcıda **http://localhost:15173** adresini açın.
+
+**Öğrenciler:** Önce [docs/GOREV_DAGILIMI.md](docs/GOREV_DAGILIMI.md) dosyasındaki **Adım 0**'ı baştan sona uygulayın.
+Program kurulumu, klonlama, Docker ve gerçek yol haritası (OSRM) kurulumu orada adım adım anlatılıyor.
+Günlük komutlar ve sorun giderme için: [docs/KURULUM.md](docs/KURULUM.md)
 
 ## Dokümanlar
 

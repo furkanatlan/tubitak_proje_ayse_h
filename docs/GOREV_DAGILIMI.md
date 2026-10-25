@@ -1,5 +1,170 @@
 # Görev Dağılımı
 
+> **Kendi görevinize geçmeden önce aşağıdaki "Adım 0"ı eksiksiz tamamlayın.** Bu adımlar dört öğrenci için de aynıdır.
+> Bir adımda takılırsanız bir sonrakine geçmeyin. Hata mesajının ekran görüntüsüyle gruba yazın.
+
+## Adım 0: Herkes için ilk kurulum
+
+Bu adımlar bir kez yapılır ve yaklaşık 30-45 dakika sürer (çoğu indirme beklemesidir).
+
+### 0.1 Programları kurun
+
+1. **Docker Desktop:** https://www.docker.com/products/docker-desktop/ adresinden indirip kurun.
+   Kurulumda **"Use WSL 2"** seçeneği işaretli olsun. Kurulumdan sonra bilgisayarı yeniden başlatın.
+   Docker Desktop'ı açın ve sol alttaki durum **"Engine running"** (yeşil) olana kadar bekleyin.
+2. **Git:** https://git-scm.com/downloads adresinden kurun. Bütün seçenekleri varsayılan bırakabilirsiniz.
+3. **VS Code:** https://code.visualstudio.com/ adresinden kurun.
+
+Kontrol etmek için bir terminal açın (Windows'ta **Git Bash** ya da **PowerShell**) ve şunları yazın:
+
+```bash
+docker --version
+git --version
+```
+
+İkisi de bir sürüm numarası yazdırmalıdır.
+
+### 0.2 GitHub erişimi
+
+1. GitHub hesabınızın kullanıcı adını hocaya iletin. Size repoya katılma daveti gelecek.
+2. E-postanıza gelen daveti (ya da https://github.com/notifications adresindeki daveti) **kabul edin**.
+3. Git'e kim olduğunuzu tanıtın (kendi bilgilerinizle):
+
+```bash
+git config --global user.name "Adınız Soyadınız"
+git config --global user.email "github-epostaniz@ornek.com"
+```
+
+### 0.3 Projeyi klonlayın
+
+Projeyi koymak istediğiniz klasörde terminal açın (örneğin `Belgeler`) ve şunları yazın:
+
+```bash
+git clone https://github.com/furkanatlan/tubitak_proje_ayse_h.git
+cd tubitak_proje_ayse_h
+```
+
+İlk `git push` işleminde tarayıcıda GitHub girişi istenecek. Bu normaldir, giriş yapmanız yeterli.
+Klasörü VS Code'da açmak için: `code .`
+
+### 0.4 Sistemi Docker ile başlatın
+
+Docker Desktop'ın açık olduğundan emin olun. Ardından proje klasöründe şunu çalıştırın:
+
+```bash
+docker compose up -d
+```
+
+İlk seferde Java, Node ve veritabanı paketleri indirildiği için **5-10 dakika** sürer. Backend'in hazır olup olmadığını görmek için:
+
+```bash
+docker compose logs -f backend
+```
+
+Ekranda **`Started TekstilKdsApplication`** yazısı göründüğünde backend hazırdır. `Ctrl + C` ile log ekranından çıkın
+(bu komut sistemi durdurmaz). Çalışan servisleri görmek için:
+
+```bash
+docker compose ps
+```
+
+Listede `backend`, `db`, `frontend` ve `pgadmin` görünmeli, hepsi `running` durumunda olmalıdır.
+
+### 0.5 Çalıştığını kontrol edin
+
+Tarayıcıda şu adresleri açın:
+
+| Adres | Ne görmelisiniz |
+|---|---|
+| http://localhost:15173 | Solda atık ilanları, sağda Bursa haritası ve renkli firma noktaları |
+| http://localhost:18080/swagger-ui.html | API dokümantasyonu |
+| http://localhost:15050 | pgAdmin (veritabanı arayüzü). Şifre sorarsa: `kds_sifre` |
+
+Haritada sol taraftaki bir ilana tıklayın, altında "Önerilen alıcılar" kartları çıkmalı.
+Bu kartlardan birine tıklayınca haritada rota çizilir. **OSRM kurulmadıysa rota düz kesikli çizgidir.**
+Gerçek yol rotası için 0.6'ya geçin.
+
+### 0.6 Gerçek yol haritası (OSRM) kurulumu
+
+OSRM, iki firma arasındaki **gerçek karayolu mesafesini ve süresini** hesaplar. Projenin lojistik ve karbon
+hesapları bu mesafeye dayanır. Bu adım bir kez yapılır.
+
+**Gereken:** Docker'ın en az **8 GB RAM** kullanabilmesi ve yaklaşık **3 GB boş disk**.
+RAM'iniz yeterli değilse aşağıdaki **"B planı"**na geçin.
+
+**1. Docker'a yeterli RAM verin.** Dosya Gezgini'nin adres çubuğuna `%UserProfile%` yazın, açılan klasörde
+`.wslconfig` adında bir dosya oluşturun (yoksa) ve içine şunu yazın:
+
+```ini
+[wsl2]
+memory=10GB
+```
+
+Sonra Docker Desktop'ı kapatıp yeniden açın. 16 GB RAM'li bir bilgisayarda `10GB` uygundur.
+
+**2. Türkiye haritasını indirip işleyin.** Proje klasöründe şunu çalıştırın:
+
+```bash
+docker compose --profile osrm-setup run --rm osrm-hazirla
+```
+
+Bu komut önce Türkiye haritasını (~600 MB) indirir, sonra rota hesaplamaya uygun hale getirir.
+İnternet ve bilgisayar hızına göre **5-20 dakika** sürer. Ekranda çok sayıda `[info]` satırı akar, bu normaldir.
+İşlem bittiğinde şu satır görünür:
+
+```
+>> Tamamlandı. Sunucuyu başlatmak için: docker compose --profile osrm up -d
+```
+
+Komut `Killed` yazıp durursa Docker'a yeterli RAM verilmemiştir. 1. adıma dönün.
+
+**3. OSRM'nin her seferinde otomatik başlamasını sağlayın.** Proje klasöründeki `.env.example` dosyasını
+kopyalayın ve kopyanın adını `.env` yapın. Sonra `.env` dosyasını VS Code'da açın ve şu satırın başındaki `#` işaretini silin:
+
+```
+COMPOSE_PROFILES=osrm
+```
+
+Ardından sistemi yeniden başlatın:
+
+```bash
+docker compose up -d
+```
+
+Artık her `docker compose up -d` komutu OSRM'yi de başlatır.
+
+**4. Kontrol edin.** Tarayıcıda şu adresi açın (Bursa Demirtaş'tan Uşak'a rota):
+
+http://localhost:15000/route/v1/driving/29.08,40.268;29.36,38.648?overview=false
+
+Sayfada `"code":"Ok"` ve `"distance":285...` (metre cinsinden) görmelisiniz. Uygulamada (http://localhost:15173)
+öneri kartlarında mesafenin yanında **(OSRM)** yazmalı ve rota haritada yolları takip eden mavi bir çizgi olmalıdır.
+Hâlâ **(TAHMIN)** yazıyorsa `docker compose ps` çıktısında `osrm` satırının `running` olup olmadığına bakın.
+
+**B planı (RAM yetersizse):** `.env.example` dosyasını `.env` adıyla kopyalayın ve şu satırın başındaki `#` işaretini silin:
+
+```
+OSRM_URL=https://router.project-osrm.org
+```
+
+Ardından `docker compose up -d` çalıştırın. Bu, internetteki herkese açık bir OSRM demo sunucusudur ve gerçek rota verir.
+Ancak sadece geliştirme içindir, çok sık istekte geçici olarak engelleyebilir. Raporda kullanılacak sonuçlar yerel OSRM'li bir bilgisayarda üretilmelidir.
+
+### 0.7 Günlük çalışma
+
+```bash
+docker compose up -d        # çalışmaya başlarken (Docker Desktop açık olmalı)
+docker compose stop         # bitirince (veriler kaybolmaz)
+git pull                    # her gün işe başlamadan önce, arkadaşlarınızın değişikliklerini almak için
+```
+
+Kod değiştirince ne yapılacağı, testler ve sık karşılaşılan sorunlar için: [KURULUM.md](KURULUM.md).
+Kendi dalınızda çalışma ve Pull Request kuralları için: [GIT_AKISI.md](GIT_AKISI.md).
+
+---
+
+## İş paketleri
+
 Proje dört iş paketine (İP) bölünmüştür. Her öğrenci bir iş paketinin **sahibidir**, yani o alandaki
 kararlardan ve kodun kalitesinden sorumludur. Bu, başka alanlara dokunamayacağı anlamına gelmez.
 Arayüzler (API sözleşmesi, veritabanı şeması) değişecekse ilgili kişiyle konuşulur.
@@ -20,6 +185,10 @@ Arayüzler (API sözleşmesi, veritabanı şeması) değişecekse ilgili kişiyl
 
 Sistemin iskeletinden sorumludur: veriler doğru, güvenli ve tutarlı şekilde API'den sunulur.
 
+**İlk gün (Adım 0'dan sonra):** http://localhost:18080/swagger-ui.html adresinde `GET /api/firmalar` uç noktasını
+"Try it out" ile çalıştırın. Ardından `ApiController.java` içinde bir şeyi değiştirin (örneğin bir `@Operation` açıklamasını),
+`docker compose restart backend` çalıştırın ve değişikliği Swagger'da görün. Java'yı IDE'de çalıştırmak (debug) için: [KURULUM.md bölüm 7](KURULUM.md#7-docker-kullanmadan-ideden-backend-çalıştırma).
+
 - [ ] Mevcut `ApiController`'ı kaynaklara göre böl (`FirmaController`, `IlanController`, `TalepController`, ...)
 - [ ] Firma, ilan ve talep için güncelleme ve silme (silme = `durum=KAPALI`) uç noktaları
 - [ ] Listeleme uç noktalarına filtre (il, atık türü, durum) ve sayfalama (`Pageable`)
@@ -34,6 +203,11 @@ Sistemin iskeletinden sorumludur: veriler doğru, güvenli ve tutarlı şekilde 
 ## Öğrenci 2: Veri, veritabanı ve coğrafi altyapı
 
 Projenin "gerçek" olmasını sağlar. Algoritma ne kadar iyi olursa olsun, sonuç verinin kalitesine bağlıdır.
+
+**İlk gün (Adım 0'dan sonra):** OSRM'yi (Adım 0.6) mutlaka yerelde kurun, çünkü bakımı sizdedir. pgAdmin'de (http://localhost:15050)
+*Tekstil KDS (docker) > tekstil_kds > Schemas > public > Tables* altındaki tabloları inceleyin. Query Tool'da şunu çalıştırın:
+`SELECT ad, ST_AsText(konum::geometry) FROM firma;`. Sonra `V1__sema.sql` ve `V2__ornek_veri.sql` dosyalarını okuyun ve
+[KURULUM.md bölüm 6](KURULUM.md#6-veritabanı-kuralları-önemli)'daki migration kurallarını öğrenin.
 
 - [ ] **Veri toplama:** Bursa OSB'leri (Nilüfer, Demirtaş, BOSB, İnegöl...) ve tekstil firmalarının konumları, TÜİK atık istatistikleri
 - [ ] Atık türü katsayılarının literatürden doğrulanması (`V2__ornek_veri.sql`'deki sayılar **yer tutucudur**):
@@ -51,6 +225,11 @@ Projenin "gerçek" olmasını sağlar. Algoritma ne kadar iyi olursa olsun, sonu
 
 Projenin "akıllı" kısmıdır ve bilimsel katkının merkezindedir.
 
+**İlk gün (Adım 0'dan sonra):** Gerçek mesafelerle çalışacağınız için OSRM'yi (Adım 0.6) kurun. Testleri çalıştırın:
+`docker compose run --rm --no-deps backend mvn test` (sonunda `BUILD SUCCESS` görmelisiniz). Sonra tarayıcıda
+http://localhost:18080/api/eslestirme/ilan/4 adresini açın ve `EslestirmeServisi.java`'yı okuyarak her sayının nasıl hesaplandığını çıkarın.
+Dikkat edin: Uşak'taki alıcının net faydası daha yüksek, ama skoru daha düşük. Çok kriterli modelin neden gerektiğini bu örnek gösteriyor.
+
 - [ ] Mevcut basit skoru (miktar uyumu %50 + mesafe %50) **çok kriterli karar verme** modeline dönüştür:
       kriterler mesafe, süre, miktar uyumu, net fayda (TL), net CO2. Ağırlıkları **AHP** ile belirle, sıralamayı **TOPSIS** ile yap.
 - [ ] **Çoklu eşleştirme:** Bir ilan birden fazla alıcıya bölünebilsin (ör. 2 ton denim: 1,5 t Gürsu + 0,5 t Uşak).
@@ -66,6 +245,10 @@ Projenin "akıllı" kısmıdır ve bilimsel katkının merkezindedir.
 ## Öğrenci 4: Arayüz ve görselleştirme
 
 Jürinin ve kullanıcının göreceği yüz. Karar destek sisteminin anlaşılır olması burada belirlenir.
+
+**İlk gün (Adım 0'dan sonra):** Rotaların gerçek yolları izlediğini görmek için OSRM'yi (Adım 0.6) kurun; RAM yetmezse B planını kullanın.
+`frontend/src/App.jsx` dosyasındaki başlık metnini değiştirip kaydedin. Tarayıcı kendiliğinden yenilenmeli, yeniden başlatma gerekmez.
+Yeni bir npm paketi eklemek için: `docker compose exec frontend npm install paket-adi`.
 
 - [ ] Firma, ilan ve talep ekleme formları (haritaya tıklayarak konum seçme dahil)
 - [ ] Eşleştirme sonuçları ekranı: önerileri karşılaştırma, rotayı haritada gösterme, "Kabul / Red" butonları
